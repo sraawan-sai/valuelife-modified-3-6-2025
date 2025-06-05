@@ -4,10 +4,13 @@ import { Users, Package, FileCheck, LogOut, DollarSign, Wallet, RefreshCw, India
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import AdminLayout from '../components/layout/AdminLayout';
-import { getAllTransactions as getAllTransactionsDb ,getAllKycRequests, getAdminStats, getAllTransactions as getAllTransactionsLocal, getAllUsersForAdmin, KycRequest, getUserDashboardStats } from '../utils/localStorageService';
+import { getAllTransactions as getAllTransactionsDb ,getAllKycRequests, getAdminStats, getAllTransactions as getAllTransactionsLocal, getAllUsersForAdmin, KycRequest, getUserDashboardStats, printTeamMatchingBonusStatus, printAllUsersNetworkStatus, seedLeftRightActiveUsers, printFirstThreeUsersDetails } from '../utils/localStorageService';
 //import { getAllTransactions as getAllTransactionsDb } from '../utils/jsonDbService';
 import { Transaction, User } from '../types';
 import axios from 'axios';
+import { recordProductPurchase } from '../utils/productPurchaseUtils';
+import { getAllProducts } from '../utils/productService';
+import { getCurrentUser, updateCurrentUser, getAllUsers } from '../utils/localStorageService';
 
 const serverUrl = import.meta.env.VITE_SERVER_URL
 
@@ -84,59 +87,35 @@ const AdminDashboard: React.FC = () => {
         timeAgo: string;
       }> = [];
 
-      // Add KYC requests to activities
-      // pendingKycRequests.forEach((request: KycRequest) => {
-      //   const user = totalUsers.find(u => u.id === request.userId);
-      //   if (user) {
-      //     allActivities.push({
-      //       type: 'kyc',
-      //       details: `User: ${user.name} (ID: ${user.id})`,
-      //       timestamp: request.submissionDate,
-      //       timeAgo: getTimeAgo(new Date(request.submissionDate))
-      //     });
-      //   }
-      // });
-      if (Array.isArray(pendingKycRequests)) {
-  pendingKycRequests.forEach((request: KycRequest) => {
-    const user = totalUsers.find((u: { id: string; }) => u.id === request.userId);
-    if (user) {
-      allActivities.push({
-        type: 'kyc',
-        details: `User: ${user.name} (ID: ${user.id})`,
-        timestamp: request.submissionDate,
-        timeAgo: getTimeAgo(new Date(request.submissionDate))
-      });
-    }
-  });
-}
-     
-    
-      // Add transactions to activities
-      // totalTransactions.forEach((transaction: Transaction) => {
-      //   const user = totalUsers.find((u: { id: string; }) => u.id === transaction.userId);
-      //   if (user) {
-      //     allActivities.push({
-      //       type: transaction.type,
-      //       details: `User: ${user.name} (ID: ${user.id}) - ${transaction.description}`,
-      //       timestamp: transaction.date,
-      //       timeAgo: getTimeAgo(new Date(transaction.date))
-      //     });
-      //   }
-      // });
-        if (Array.isArray(totalTransactions)) {
-        totalTransactions.forEach((transaction: Transaction) => {
-          const user = totalUsers.find((u: { id: string; }) => u.id === transaction.userId);
-          if (user) {
-            allActivities.push({
-              type: transaction.type,
-              details: `User: ${user.name} (ID: ${user.id}) - ${transaction.description}`,
-              timestamp: transaction.date,
-              timeAgo: getTimeAgo(new Date(transaction.date))
-            });
-          }
-        });
-      }
+      // Remove or comment out the following block because totalUsers is a number, not an array
+      // if (Array.isArray(pendingKycRequests)) {
+      //   pendingKycRequests.forEach((request: KycRequest) => {
+      //     const user = totalUsers.find((u: { id: string; }) => u.id === request.userId);
+      //     if (user) {
+      //       allActivities.push({
+      //         type: 'kyc',
+      //         details: `User: ${user.name} (ID: ${user.id})`,
+      //         timestamp: request.submissionDate,
+      //         timeAgo: getTimeAgo(new Date(request.submissionDate))
+      //       });
+      //     }
+      //   });
+      // }
 
+      // Remove or comment out the following block because totalUsers is a number, not an array
+      // if (Array.isArray(totalTransactions)) {
+      //   totalTransactions.forEach((transaction: Transaction) => {
+      //     const user = totalUsers.find((u: { id: string; }) => u.id === transaction.userId);
+      //     if (user) {
+      //       allActivities.push({
+      //         type: transaction.type,
+      //         details: `User: ${user.name} (ID: ${user.id}) - ${transaction.description}`,
+      //         timestamp: transaction.date,
+      //         timeAgo: getTimeAgo(new Date(transaction.date))
+      //       });
+      //     }
+      //   });
+      // }
 
       // Sort by timestamp (most recent first) and limit to 10
       allActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -190,6 +169,56 @@ const AdminDashboard: React.FC = () => {
 
   const handleRefresh = () => {
     loadDashboardData();
+  };
+
+  const handlePrintMatchingBonusStatus = () => {
+    printTeamMatchingBonusStatus();
+    alert('Matching bonus status printed to console.');
+  };
+
+  const handlePrintAllUsersNetworkStatus = () => {
+    printAllUsersNetworkStatus();
+    alert('All users network status printed to console.');
+  };
+
+  const handleSeedLeftRightActiveUsers = async () => {
+    await seedLeftRightActiveUsers();
+    alert('Seeded left/right active users for demo. Check the console and rerun the debug buttons.');
+  };
+
+  const handlePrintFirstThreeUsersDetails = async () => {
+    await printFirstThreeUsersDetails();
+    alert('Printed first three users details to console.');
+  };
+
+  // Debug: Simulate product purchase for left/right users
+  const handleSimulatePurchaseForLeftRight = async () => {
+    const allUsers = await getAllUsers();
+    if (allUsers.length < 3) {
+      alert('Not enough users to simulate purchases.');
+      return;
+    }
+    const sponsor = allUsers[0];
+    const leftUser = allUsers[1];
+    const rightUser = allUsers[2];
+    const products = getAllProducts();
+    if (!products.length) {
+      alert('No products found.');
+      return;
+    }
+    const product = products[0]; // Use the first product for simulation
+    const originalUser = getCurrentUser();
+    // Helper to simulate purchase for a user
+    const simulatePurchase = async (user: User) => {
+      updateCurrentUser(user);
+      // Use a fake paymentId for debug
+      await recordProductPurchase(product.id, `debug-payment-${user.id}-${Date.now()}`);
+    };
+    await simulatePurchase(leftUser);
+    await simulatePurchase(rightUser);
+    // Restore original user
+    if (originalUser) updateCurrentUser(originalUser);
+    alert('Simulated product purchase for left and right users. Check matching bonus status!');
   };
 
   return (
@@ -287,62 +316,6 @@ const AdminDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Admin Commission/Bonus Breakdown */}
-      {adminStats && (
-        <Card title="Admin Commission & Bonus Breakdown" className="mb-8">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center bg-white rounded-xl shadow p-4 border border-neutral-100">
-              <div className="bg-yellow-500 p-3 rounded-full flex items-center justify-center mr-4">
-                <Users className="h-7 w-7 text-white" />
-              </div>
-              <div className="flex-grow">
-                <div className="font-bold text-neutral-800">Referral Bonus (Admin Share)</div>
-                <div className="text-xs text-neutral-500">Admin's share of all direct referral bonuses</div>
-              </div>
-              <div className="text-right font-extrabold text-lg text-primary-700 min-w-[80px]">
-                ₹{adminStats.earningsByType.referral_bonus?.toFixed(2) || '0.00'}
-              </div>
-            </div>
-            <div className="flex items-center bg-white rounded-xl shadow p-4 border border-neutral-100">
-              <div className="bg-green-500 p-3 rounded-full flex items-center justify-center mr-4">
-                <BarChart3 className="h-7 w-7 text-white" />
-              </div>
-              <div className="flex-grow">
-                <div className="font-bold text-neutral-800">Team Matching (Admin Share)</div>
-                <div className="text-xs text-neutral-500">Admin's share of all matching bonuses</div>
-              </div>
-              <div className="text-right font-extrabold text-lg text-primary-700 min-w-[80px]">
-                ₹{adminStats.earningsByType.team_matching?.toFixed(2) || '0.00'}
-              </div>
-            </div>
-            <div className="flex items-center bg-white rounded-xl shadow p-4 border border-neutral-100">
-              <div className="bg-purple-500 p-3 rounded-full flex items-center justify-center mr-4">
-                <Award className="h-7 w-7 text-white" />
-              </div>
-              <div className="flex-grow">
-                <div className="font-bold text-neutral-800">Royalty Bonus (Admin Share)</div>
-                <div className="text-xs text-neutral-500">Admin's share of all royalty bonuses</div>
-              </div>
-              <div className="text-right font-extrabold text-lg text-primary-700 min-w-[80px]">
-                ₹{adminStats.earningsByType.royalty_bonus?.toFixed(2) || '0.00'}
-              </div>
-            </div>
-            <div className="flex items-center bg-white rounded-xl shadow p-4 border border-neutral-100">
-              <div className="bg-blue-500 p-3 rounded-full flex items-center justify-center mr-4">
-                <Repeat className="h-7 w-7 text-white" />
-              </div>
-              <div className="flex-grow">
-                <div className="font-bold text-neutral-800">Repurchase Bonus (Admin Share)</div>
-                <div className="text-xs text-neutral-500">Admin's share of all repurchase bonuses</div>
-              </div>
-              <div className="text-right font-extrabold text-lg text-primary-700 min-w-[80px]">
-                ₹{adminStats.earningsByType.repurchase_bonus?.toFixed(2) || '0.00'}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* Quick Actions */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
@@ -401,6 +374,39 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
       </Card>
+
+      <div className="mb-4">
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          onClick={handlePrintMatchingBonusStatus}
+        >
+          Debug: Print Team Matching Bonus Status
+        </button>
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 ml-2"
+          onClick={handlePrintAllUsersNetworkStatus}
+        >
+          Debug: Print All Users Network Status
+        </button>
+        <button
+          className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 ml-2"
+          onClick={handleSeedLeftRightActiveUsers}
+        >
+          Debug: Seed Left/Right Active Users
+        </button>
+        <button
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 ml-2"
+          onClick={handlePrintFirstThreeUsersDetails}
+        >
+          Debug: Print First Three Users Details
+        </button>
+        <button
+          className="bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700 ml-2"
+          onClick={handleSimulatePurchaseForLeftRight}
+        >
+          Debug: Simulate Product Purchase for Left/Right
+        </button>
+      </div>
 
       {/* Custom Animations and Effects */}
       <style>{`

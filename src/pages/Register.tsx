@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, User, Phone, MapPin, Users, Award, Target, Shield, BarChart } from 'lucide-react';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
@@ -55,7 +55,9 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const referralCode = queryParams.get('ref') || '';
+  const referralCodeFromQuery = queryParams.get('ref') || '';
+  const { referralCode: referralCodeFromParam } = useParams();
+  const referralCode = referralCodeFromParam || referralCodeFromQuery;
 
   useEffect(() => {
     AOS.init({
@@ -67,33 +69,22 @@ const Register: React.FC = () => {
 
   useEffect(() => {
     const findReferrer = async () => {
-      if (referralCode) {
+      if (referralCode && !useManualReferral && !formData.sponsorId) {
         const users = await getAllUsers();
         const foundReferrer = users.find(user => user.distributorId.toUpperCase() === referralCode.toUpperCase() || user.referralCode.toUpperCase() === referralCode.toUpperCase());
-        if (foundReferrer) setReferrer(foundReferrer);
-        else setReferrer(null);
+        if (foundReferrer) {
+          setReferrer(foundReferrer);
+          setFormData(prev => ({ ...prev, sponsorId: referralCode }));
+          setSponsorInfo({ name: foundReferrer.name });
+          setSponsorPosition(null);
+        } else {
+          setReferrer(null);
+          setSponsorInfo(null);
+        }
       }
     };
     findReferrer();
-  }, [referralCode]);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (formData.manualReferralCode && formData.manualReferralCode.length >= 3) {
-        const users = await getAllUsers();
-        const foundReferrer = users.find(user => user.referralCode.toUpperCase() === formData.manualReferralCode.toUpperCase());
-        if (foundReferrer) {
-          setReferrer(foundReferrer);
-          setErrors(prev => { const newErrors = { ...prev }; delete newErrors.manualReferralCode; return newErrors; });
-        } else {
-          setReferrer(null);
-        }
-      } else {
-        setReferrer(null);
-      }
-    };
-    fetchUsers();
-  }, [formData.manualReferralCode]);
+  }, [referralCode, useManualReferral, formData.sponsorId]);
 
   useEffect(() => {
     const fetchSponsor = async () => {
@@ -103,6 +94,7 @@ const Register: React.FC = () => {
         if (foundSponsor) {
           setSponsorInfo({ name: foundSponsor.name });
           setErrors(prev => { const newErrors = { ...prev }; delete newErrors.sponsorId; return newErrors; });
+          setSponsorPosition(null);
         } else {
           setSponsorInfo(null);
           setErrors(prev => ({ ...prev, sponsorId: 'Sponsor not found.' }));
@@ -111,8 +103,30 @@ const Register: React.FC = () => {
         setSponsorInfo(null);
       }
     };
-    fetchSponsor();
-  }, [formData.sponsorId]);
+    if (!referralCode || useManualReferral) fetchSponsor();
+  }, [formData.sponsorId, referralCode, useManualReferral]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (formData.manualReferralCode && formData.manualReferralCode.length >= 3) {
+        const users = await getAllUsers();
+        const foundReferrer = users.find(user => user.referralCode.toUpperCase() === formData.manualReferralCode.toUpperCase());
+        if (foundReferrer) {
+          setReferrer(foundReferrer);
+          setSponsorInfo({ name: foundReferrer.name });
+          setErrors(prev => { const newErrors = { ...prev }; delete newErrors.manualReferralCode; return newErrors; });
+          setReferralPosition(null);
+        } else {
+          setReferrer(null);
+          setSponsorInfo(null);
+        }
+      } else {
+        setReferrer(null);
+        setSponsorInfo(null);
+      }
+    };
+    fetchUsers();
+  }, [formData.manualReferralCode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -125,6 +139,13 @@ const Register: React.FC = () => {
         delete newErrors[name];
         return newErrors;
       });
+    }
+
+    // Reset positions when switching between manual referral and sponsor ID
+    if (name === 'manualReferralCode') {
+      setSponsorPosition(null);
+    } else if (name === 'sponsorId') {
+      setReferralPosition(null);
     }
   };
 
@@ -556,15 +577,15 @@ const Register: React.FC = () => {
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-sm text-gray-600">
-                        {referralCode ? (
-                          <>Using referral code: <span className="font-medium text-blue-600">{referralCode}</span></>
+                        {formData.manualReferralCode ? (
+                          <>Using referral code: <span className="font-medium text-blue-600">{formData.manualReferralCode}</span></>
                         ) : (
-                          'No referral code provided in URL'
+                          'No referral code provided'
                         )}
                       </p>
                     </div>
                   )}
-                  {referrer && (
+                  {formData.manualReferralCode && referrer && (
                     <div className="bg-green-50 rounded-lg p-4 border border-green-200 mt-2">
                       <p className="text-sm text-green-700">
                         Referred by: <span className="font-medium">{referrer.name}</span>

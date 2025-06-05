@@ -2217,3 +2217,52 @@ export const hasReachedTeamMatchingDailyCap = async (userId: string): Promise<bo
     .reduce((sum, t) => sum + (t.pairs || 0), 0);
   return todaysPairsCredited >= dailyCap;
 };
+
+// Add this debug function at the end of the file
+export const printAllUsersNetworkStatus = async () => {
+  const allUsers = await getAllUsers();
+  console.log('--- All Users Network Status ---');
+  allUsers.forEach(user => {
+    console.log(`User: ${user.name} (${user.id}) | SponsorId: ${user.sponsorId} | Position: ${user.position} | Active: ${user.active}`);
+  });
+  console.log('--- End of Users List ---');
+};
+
+// Add this debug utility to seed left/right active users for demo/testing
+export const seedLeftRightActiveUsers = async () => {
+  const allUsers = await getAllUsers();
+  if (allUsers.length < 3) {
+    console.warn('Not enough users to seed left/right active users.');
+    return;
+  }
+  // Use the first user as sponsor
+  const sponsor = allUsers[0];
+  // Set the next two users as left and right under the sponsor
+  const leftUser = { ...allUsers[1], sponsorId: sponsor.distributorId, position: 'left' as 'left', active: true };
+  const rightUser = { ...allUsers[2], sponsorId: sponsor.distributorId, position: 'right' as 'right', active: true };
+
+  // Update users via backend API
+  await axios.put(`${serverUrl}/api/db/users/${leftUser.id}`, leftUser);
+  await axios.put(`${serverUrl}/api/db/users/${rightUser.id}`, rightUser);
+
+  // Optionally, update localStorage for immediate feedback
+  allUsers[1] = leftUser;
+  allUsers[2] = rightUser;
+  setToStorage(STORAGE_KEYS.USERS, allUsers);
+
+  console.log('Seeded left/right active users for sponsor:', sponsor.name);
+};
+
+// Debug utility: Print the full user objects for the first three users (sponsor, left, right)
+export const printFirstThreeUsersDetails = async () => {
+  const allUsers = await getAllUsers();
+  if (allUsers.length < 3) {
+    console.warn('Not enough users to print first three user details.');
+    return;
+  }
+  console.log('--- First Three Users Details ---');
+  console.log('Sponsor:', allUsers[0]);
+  console.log('Left:', allUsers[1]);
+  console.log('Right:', allUsers[2]);
+  console.log('--- End of First Three Users Details ---');
+};

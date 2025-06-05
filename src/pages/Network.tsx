@@ -282,7 +282,7 @@ const BinaryMLMSimulation: React.FC = () => {
 };
 
 const Network: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"tree" | "list" | "mlm">("list");
+  const [activeTab, setActiveTab] = useState<"tree" | "list">("list");
   const [networkData, setNetworkData] = useState<NetworkMember | null>(null);
   const [stats, setStats] = useState<NetworkStats | null>(null);
   const [referralCode, setReferralCode] = useState<string>("");
@@ -580,7 +580,7 @@ const Network: React.FC = () => {
   const copyReferralLink = () => {
     if (!currentUser) return;
 
-    const referralUrl = `${window.location.origin}/register?ref=${currentUser.referralCode}`;
+    const referralUrl = `${window.location.origin}/register/${currentUser.referralCode}`;
     navigator.clipboard
       .writeText(referralUrl)
       .then(() => {
@@ -725,7 +725,7 @@ const Network: React.FC = () => {
               <input
                 type="text"
                 readOnly
-                value={`${window.location.origin}/register?ref=${referralCode}`}
+                value={`${window.location.origin}/register/${referralCode}`}
                 className="flex-1 p-2 text-sm border border-neutral-300 rounded-md bg-white"
               />
               <Button size="sm" variant="primary" onClick={copyReferralLink}>
@@ -845,16 +845,6 @@ const Network: React.FC = () => {
               }`}
             >
               Tree View
-            </button>
-            <button
-              onClick={() => setActiveTab("mlm")}
-              className={`py-3 px-4 font-medium text-sm border-b-2 ${
-                activeTab === "mlm"
-                  ? "border-primary-500 text-primary-600"
-                  : "border-transparent text-neutral-500 hover:text-neutral-700"
-              }`}
-            >
-              MLM Binary Simulation
             </button>
           </div>
         </div>
@@ -1101,11 +1091,6 @@ const Network: React.FC = () => {
           </div>
         </Card>
       </div>
-
-      {/* MLM Binary Simulation */}
-      {activeTab === "mlm" && (
-        <BinaryMLMSimulation />
-      )}
 
       {/* Custom Animations and Effects */}
       <style>{`

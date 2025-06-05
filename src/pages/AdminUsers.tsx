@@ -41,55 +41,59 @@ const AdminUsers: React.FC = () => {
 
   // Load user data
   const loadUserData = async () => {
-    const allUsers = await getAllUsers();
+    try {
+      const allUsers = await getAllUsers();
+      
+      // Transform users with direct referrals and team size information
+      const usersWithNetworkInfo = await Promise.all(allUsers.map(async user => {
+        // Calculate direct referrals (users with this user as sponsor)
+        // Check both sponsorId matching user.id and sponsorId matching user.referralCode
+        const directReferrals = allUsers.filter(u =>
+          (u.sponsorId === user.id) ||
+          (u.sponsorId && user.referralCode && u.sponsorId.toUpperCase() === user.referralCode.toUpperCase())
+        ).length;
 
-    // Transform users with direct referrals and team size information
-    const usersWithNetworkInfo = allUsers.map(user => {
-      // Calculate direct referrals (users with this user as sponsor)
-      // Check both sponsorId matching user.id and sponsorId matching user.referralCode
-      const directReferrals = allUsers.filter(u =>
-        u.sponsorId === user.id ||
-        (u.sponsorId && user.referralCode && u.sponsorId.toUpperCase() === user.referralCode.toUpperCase())
-      ).length;
+        // Recursively find team members for accurate team size
+        const findTeamSize = (userId: string, referralCode: string | undefined, visited = new Set<string>()): number => {
+          // Prevent infinite recursion by tracking visited users
+          if (!userId || !referralCode || visited.has(userId)) {
+            return 0;
+          }
 
-      // Calculate team size - this is simplified, in a real app would need recursive calculation
-      // For now using a fixed value or estimation
-      let teamSize = directReferrals;
+          // Add current user to visited set
+          visited.add(userId);
 
-      // Recursively find team members for accurate team size
-      const findTeamSize = (userId: string, referralCode: string, visited = new Set<string>()): number => {
-        // Prevent infinite recursion by tracking visited users
-        if (visited.has(userId)) {
-          return 0;
-        }
+          // Find direct downline using both ID and referral code
+          const directDownline = allUsers.filter(u =>
+            (u.sponsorId === userId) ||
+            (u.sponsorId && referralCode && u.sponsorId.toUpperCase() === referralCode.toUpperCase())
+          );
+          
+          let downlineCount = directDownline.length;
 
-        // Add current user to visited set
-        visited.add(userId);
+          for (const member of directDownline) {
+            if (!visited.has(member.id)) {
+              downlineCount += findTeamSize(member.id, member.referralCode, visited);
+            }
+          }
 
-        // Find direct downline using both ID and referral code
-        const directDownline = allUsers.filter(u =>
-          u.sponsorId === userId ||
-          (u.sponsorId && referralCode && u.sponsorId.toUpperCase() === referralCode.toUpperCase())
-        );
-        let downlineCount = directDownline.length;
+          return downlineCount;
+        };
 
-        for (const member of directDownline) {
-          downlineCount += findTeamSize(member.id, member.referralCode, visited);
-        }
+        // Calculate team size excluding the user themselves
+        const teamSize = findTeamSize(user.id, user.referralCode || '', new Set<string>());
 
-        return downlineCount;
-      };
+        return {
+          ...user,
+          directReferrals,
+          teamSize
+        };
+      }));
 
-      teamSize = findTeamSize(user.id, user.referralCode);
-
-      return {
-        ...user,
-        directReferrals,
-        teamSize
-      };
-    });
-
-    setUsers(usersWithNetworkInfo);
+      setUsers(usersWithNetworkInfo);
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
   };
 
   // Check for admin authentication and load user data
@@ -234,7 +238,9 @@ const AdminUsers: React.FC = () => {
   };
 
   const handleUpdateKycStatus = async (userId: string, status: KYCStatus) => {
-    const success = await updateUserKycStatus(userId, status);
+    // Generate a dummy KYC ID for the API call
+    const kycId = `kyc-${userId}-${Date.now()}`;
+    const success = await updateUserKycStatus(kycId, userId, status);
     if (success) {
       loadUserData();
       // If the current selected user is the one being updated, update their data
@@ -307,7 +313,10 @@ const AdminUsers: React.FC = () => {
   const getUserSponsorName = (sponsorId: string | null) => {
     if (!sponsorId) return 'None (Root User)';
 
-    const sponsor = users.find(user => user.id === sponsorId);
+    const sponsor = users.find(user => 
+      user.id === sponsorId || 
+      (user.referralCode && sponsorId === user.referralCode)
+    );
     return sponsor ? sponsor.name : 'Unknown';
   };
 

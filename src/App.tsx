@@ -33,6 +33,7 @@ function App() {
         {/* User Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/register/:referralCode" element={<Register />} />
         <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />
         {/* KYC-protected routes */}
         <Route path="/network" element={<ProtectedRoute element={<Network />} requiresKyc={true} />} />

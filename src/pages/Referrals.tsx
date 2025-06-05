@@ -26,7 +26,7 @@ const Referrals: React.FC = () => {
   // console.log(user?.referralCode,"referalUSer")
   
   // Sample referral data
-  const baseUrl = `${window.location.origin}/register?ref=`
+  const baseUrl = `${window.location.origin}/register/`
   const [referralCode, setReferralCode] =  useState<string | undefined>();
   const [referralLink, setReferralLink] = useState('');
     const [socialTemplates, setSocialTemplates] = useState([
@@ -101,7 +101,7 @@ const Referrals: React.FC = () => {
   //   }
   // ]);
   const getMessageTemplate = (platform: string, code: string) => {
-      if (!code) return '';
+    if (!code) return '';
     const link = `${baseUrl}${code.toLowerCase()}`;
     switch (platform) {
       case 'Facebook':
@@ -117,15 +117,17 @@ const Referrals: React.FC = () => {
     }
   };
 
-
   // Update social templates when referral code changes
   useEffect(() => {
-    setReferralLink(`${baseUrl}${referralCode?.toLowerCase()}`);
-    setSocialTemplates(prev => prev.map(template => ({
-      ...template,
-      message: template.message.replace(/https:\/\/valuelife\.in\/register\?ref=[a-zA-Z0-9]+/, referralLink)
-    })));
-  }, [referralCode, referralLink]);
+    if (referralCode) {
+      const newLink = `${baseUrl}${referralCode.toLowerCase()}`;
+      setReferralLink(newLink);
+      setSocialTemplates(prev => prev.map(template => ({
+        ...template,
+        message: template.message.replace(/https:\/\/valuelife\.in\/register\?ref=[a-zA-Z0-9]+/, newLink)
+      })));
+    }
+  }, [referralCode]);
   
   // Check KYC status
   if (currentUser && currentUser.kycStatus !== 'approved') {
