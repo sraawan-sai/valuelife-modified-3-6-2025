@@ -2138,28 +2138,8 @@ export const isNetworkPositionAvailable = async (
   return true;
 };
 
-// Debug: Print all transactions for test8
-export const printTransactionsForTest8 = async () => {
-  const userId = '6844f1b2947ba3abfa029d7c';
-  const transactions = await getUserTransactions(userId);
-  if (!transactions || transactions.length === 0) {
-    console.log(`No transactions found for test8 (${userId})`);
-    return;
-  }
-  console.log(`All transactions for test8 (${userId}):`);
-  for (const t of transactions) {
-    console.log(`Type: ${t.type}, Status: ${t.status}, Pairs: ${t.pairs || '-'}, Amount: ${t.amount}, Date: ${t.date}`);
-  }
-};
-
 // Retroactive team matching bonus check for all users
 export const checkAndAwardAllTeamMatchingBonuses = async () => {
-
-// DEBUG: REMOVE THIS BLOCK AFTER YOU FINISH DEBUGGING!
-(async () => {
-  await printTransactionsForTest8();
-})();
-
   const allUsers = await getAllUsers();
   for (const sponsor of allUsers) {
     // Find left and right children who are active
