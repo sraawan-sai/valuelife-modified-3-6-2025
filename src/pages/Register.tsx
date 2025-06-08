@@ -234,6 +234,7 @@ const Register: React.FC = () => {
         kycDocuments: { idProof: '', addressProof: '', bankDetails: '' },
         bankDetails: { accountName: '', accountNumber: '', bankName: '', ifscCode: '' },
         password: hashedPassword,
+        placementPosition: position,
         position: position,
       };
       const response = await axios.post(`${serverUrl}/api/db/users`, {
