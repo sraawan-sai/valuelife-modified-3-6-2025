@@ -1465,6 +1465,15 @@ export const addTeamMatchingBonus = async(userId: string, pairs: number): Promis
     pairs: actualPairs
   };
 
+  // DEBUG: Log transaction before adding
+  console.log('DEBUG: About to add team_matching transaction:', transaction);
+  try {
+    await addTransaction(transaction);
+    console.log('DEBUG: team_matching transaction successfully added!');
+  } catch (error) {
+    console.error('DEBUG: Failed to add team_matching transaction:', error);
+  }
+
   // Create separate transactions for tracking the deductions
   const tdsTransaction: Transaction = {
     id: `tm-tds-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -1475,6 +1484,14 @@ export const addTeamMatchingBonus = async(userId: string, pairs: number): Promis
     date: new Date().toISOString(),
     status: 'completed'
   };
+  // DEBUG: Log TDS transaction before adding
+  console.log('DEBUG: About to add TDS deduction transaction:', tdsTransaction);
+  try {
+    await addTransaction(tdsTransaction);
+    console.log('DEBUG: TDS deduction transaction successfully added!');
+  } catch (error) {
+    console.error('DEBUG: Failed to add TDS deduction transaction:', error);
+  }
 
   const adminTransaction: Transaction = {
     id: `tm-admin-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -1485,6 +1502,14 @@ export const addTeamMatchingBonus = async(userId: string, pairs: number): Promis
     date: new Date().toISOString(),
     status: 'completed'
   };
+  // DEBUG: Log Admin transaction before adding
+  console.log('DEBUG: About to add Admin deduction transaction:', adminTransaction);
+  try {
+    await addTransaction(adminTransaction);
+    console.log('DEBUG: Admin deduction transaction successfully added!');
+  } catch (error) {
+    console.error('DEBUG: Failed to add Admin deduction transaction:', error);
+  }
 
   const repurchaseTransaction: Transaction = {
     id: `tm-repurch-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -1495,12 +1520,14 @@ export const addTeamMatchingBonus = async(userId: string, pairs: number): Promis
     date: new Date().toISOString(),
     status: 'completed'
   };
-
-  // Add all transactions
-  addTransaction(transaction);
-  addTransaction(tdsTransaction);
-  addTransaction(adminTransaction);
-  addTransaction(repurchaseTransaction);
+  // DEBUG: Log Repurchase transaction before adding
+  console.log('DEBUG: About to add Repurchase deduction transaction:', repurchaseTransaction);
+  try {
+    await addTransaction(repurchaseTransaction);
+    console.log('DEBUG: Repurchase deduction transaction successfully added!');
+  } catch (error) {
+    console.error('DEBUG: Failed to add Repurchase deduction transaction:', error);
+  }
 
   // Get the admin user (for admin fee allocation)
   const allUsers = await getAllUsers();
@@ -2111,15 +2138,47 @@ export const isNetworkPositionAvailable = async (
   return true;
 };
 
+// Debug: Print all transactions for test8
+export const printTransactionsForTest8 = async () => {
+  const userId = '6844f1b2947ba3abfa029d7c';
+  const transactions = await getUserTransactions(userId);
+  if (!transactions || transactions.length === 0) {
+    console.log(`No transactions found for test8 (${userId})`);
+    return;
+  }
+  console.log(`All transactions for test8 (${userId}):`);
+  for (const t of transactions) {
+    console.log(`Type: ${t.type}, Status: ${t.status}, Pairs: ${t.pairs || '-'}, Amount: ${t.amount}, Date: ${t.date}`);
+  }
+};
+
 // Retroactive team matching bonus check for all users
 export const checkAndAwardAllTeamMatchingBonuses = async () => {
+
+// DEBUG: REMOVE THIS BLOCK AFTER YOU FINISH DEBUGGING!
+(async () => {
+  await printTransactionsForTest8();
+})();
+
   const allUsers = await getAllUsers();
   for (const sponsor of allUsers) {
     // Find left and right children who are active
-    const leftChild = allUsers.find(u => u.sponsorId === sponsor.distributorId && u.position === 'left' && u.active);
-    const rightChild = allUsers.find(u => u.sponsorId === sponsor.distributorId && u.position === 'right' && u.active);
+    const leftChild = allUsers.find(u => u.sponsorId === sponsor.distributorId && u.position === 'left');
+    const rightChild = allUsers.find(u => u.sponsorId === sponsor.distributorId && u.position === 'right');
 
-    if (leftChild && rightChild) {
+    console.log(`Sponsor: ${sponsor.name} (${sponsor.distributorId})`);
+    if (leftChild) {
+      console.log(`  Left Child: ${leftChild.name} (active: ${leftChild.active})`);
+    } else {
+      console.log('  Left Child: NONE');
+    }
+    if (rightChild) {
+      console.log(`  Right Child: ${rightChild.name} (active: ${rightChild.active})`);
+    } else {
+      console.log('  Right Child: NONE');
+    }
+
+    if (leftChild && leftChild.active && rightChild && rightChild.active) {
       // Check if sponsor already received team matching bonus for this pair
       const transactions = await getUserTransactions(sponsor.id);
       const hasPairBonus = transactions.some(

@@ -221,31 +221,54 @@ const Register: React.FC = () => {
       }
       const distributorId = "VL" + Math.floor(100 + Math.random() * 900);
       const newUser = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        distributorId: distributorId,
-        profilePicture: '',
-        sponsorId: sponsor ? sponsor.distributorId : null,
-        referralCode: distributorId,
-        registrationDate: new Date().toISOString(),
-        kycStatus: 'pending' as KYCStatus,
-        kycDocuments: { idProof: '', addressProof: '', bankDetails: '' },
-        bankDetails: { accountName: '', accountNumber: '', bankName: '', ifscCode: '' },
-        password: hashedPassword,
-        placementPosition: position,
-        position: position,
-      };
-      const response = await axios.post(`${serverUrl}/api/db/users`, {
+  name: formData.name,
+  email: formData.email,
+  phone: formData.phone,
+  address: formData.address,
+  distributorId: distributorId,
+  profilePicture: '',
+  sponsorId: formData.sponsorId || null, // from Referral Code field (left box)
+  referralCode: distributorId,
+  registrationDate: new Date().toISOString(),
+  kycStatus: 'pending' as KYCStatus,
+  kycDocuments: { idProof: '', addressProof: '', bankDetails: '' },
+  bankDetails: { accountName: '', accountNumber: '', bankName: '', ifscCode: '' },
+  password: hashedPassword,
+  placementId: formData.manualReferralCode || null, // from Position ID field (right box)
+  placementPosition: referralPosition, // from right box (left/right)
+  position: referralPosition,
+};
+console.log('[DEBUG] sponsorId:', formData.sponsorId);
+console.log('[DEBUG] placementId:', formData.manualReferralCode);
+console.log('[DEBUG] placementPosition:', referralPosition);
+      console.log('[DEBUG] Register payload:', {
         newUser,
         sponsorId: sponsor ? sponsor.distributorId : null,
         position,
         referralCode: usedReferralCode || undefined
       });
-      const createdUser = response.data;
-      await sendWelcomeSms(createdUser.phone, createdUser.distributorId, formData.password);
-      navigate('/kyc');
+      if (sponsor) {
+        console.log('[DEBUG] Sponsor:', sponsor);
+      }
+      console.log('[DEBUG] Placement position:', position);
+      try {
+        const response = await axios.post(`${serverUrl}/api/db/users`, {
+          newUser,
+          sponsorId: sponsor ? sponsor.distributorId : null,
+          position,
+          referralCode: usedReferralCode || undefined
+        });
+        console.log('[DEBUG] Backend response:', response.data);
+        const createdUser = response.data;
+        if (createdUser && createdUser._id) {
+          console.log('[DEBUG] Created user ID:', createdUser._id);
+        }
+        await sendWelcomeSms(createdUser.phone, createdUser.distributorId, formData.password);
+        navigate('/kyc');
+      } catch (err) {
+        console.error('[DEBUG] Registration error:', err);
+        setErrors({ form: 'Registration failed. Please try again.' });
+      }
     } catch (err) {
       setErrors({ form: 'Registration failed. Please try again.' });
     } finally {
